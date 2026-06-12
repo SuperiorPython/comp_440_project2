@@ -35,12 +35,16 @@ const ctx = canvas.getContext("2d");
 let gameState = "start";
 
 const keys = {};
-
 const lanes = [200, 300, 400, 500, 600];
 
 let obstacles = [];
 let spawnTimer = 0;
 let gameSpeed = 4;
+
+let momentum = 70;
+const maxMomentum = 100;
+const momentumDrainRate = 0.08;
+const momentumGain = 20;
 
 const player = {
     x: lanes[2] - 20,
@@ -54,6 +58,7 @@ document.addEventListener("keydown", function(event) {
     keys[event.key] = true;
 
     if (gameState === "start" && event.key === " ") {
+        resetGame();
         gameState = "playing";
     }
 });
@@ -61,6 +66,14 @@ document.addEventListener("keydown", function(event) {
 document.addEventListener("keyup", function(event) {
     keys[event.key] = false;
 });
+
+function resetGame() {
+    obstacles = [];
+    spawnTimer = 0;
+    gameSpeed = 4;
+    momentum = 70;
+    player.x = lanes[2] - 20;
+}
 
 function updatePlayer() {
 
@@ -112,6 +125,33 @@ function updateObstacles() {
     }
 }
 
+function updateMomentum() {
+
+    momentum -= momentumDrainRate;
+
+    if (momentum <= 0) {
+        momentum = 0;
+        gameState = "gameOver";
+    }
+}
+
+function drawMomentumBar() {
+
+    ctx.fillStyle = "white";
+    ctx.font = "18px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText("Momentum", 25, 30);
+
+    ctx.fillStyle = "#555";
+    ctx.fillRect(25, 45, 200, 20);
+
+    ctx.fillStyle = "#4caf50";
+    ctx.fillRect(25, 45, momentum * 2, 20);
+
+    ctx.strokeStyle = "white";
+    ctx.strokeRect(25, 45, 200, 20);
+}
+
 function drawObstacles() {
 
     ctx.fillStyle = "#ff4444";
@@ -139,23 +179,14 @@ function checkCollisions() {
             player.y + player.height > obstacle.y
         ) {
 
-            console.log("Obstacle Hit");
+            momentum += momentumGain;
+
+            if (momentum > maxMomentum) {
+                momentum = maxMomentum;
+            }
 
             obstacles.splice(i, 1);
         }
-    }
-}
-
-function drawLanes() {
-
-    ctx.strokeStyle = "#444";
-    ctx.lineWidth = 2;
-
-    for (let lane of lanes) {
-        ctx.beginPath();
-        ctx.moveTo(lane, 0);
-        ctx.lineTo(lane, canvas.height);
-        ctx.stroke();
     }
 }
 
@@ -178,7 +209,7 @@ function drawStartScreen() {
     ctx.fillText(
         "Reverse Runner",
         canvas.width / 2,
-        180
+        170
     );
 
     ctx.font = "22px Arial";
@@ -186,24 +217,57 @@ function drawStartScreen() {
     ctx.fillText(
         "Press SPACE to Start",
         canvas.width / 2,
-        250
+        240
     );
 
     ctx.fillText(
         "Move with A/D or Arrow Keys",
         canvas.width / 2,
-        290
+        280
+    );
+
+    ctx.fillText(
+        "Crash into falling blocks to keep momentum alive",
+        canvas.width / 2,
+        325
+    );
+}
+
+function drawGameOverScreen() {
+
+    ctx.fillStyle = "white";
+    ctx.font = "42px Arial";
+    ctx.textAlign = "center";
+
+    ctx.fillText(
+        "Game Over",
+        canvas.width / 2,
+        200
+    );
+
+    ctx.font = "22px Arial";
+
+    ctx.fillText(
+        "You ran out of momentum",
+        canvas.width / 2,
+        250
+    );
+
+    ctx.fillText(
+        "Press SPACE to Restart",
+        canvas.width / 2,
+        295
     );
 }
 
 function drawGame() {
 
-    drawLanes();
-
     updatePlayer();
     updateObstacles();
     checkCollisions();
+    updateMomentum();
 
+    drawMomentumBar();
     drawPlayer();
     drawObstacles();
 }
@@ -223,6 +287,10 @@ function gameLoop() {
 
     if (gameState === "playing") {
         drawGame();
+    }
+
+    if (gameState === "gameOver") {
+        drawGameOverScreen();
     }
 
     requestAnimationFrame(gameLoop);
