@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reverse Runner</title>
+
+<style>
+body {
+    margin: 0;
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+    color: white;
+}
+
+canvas {
+    border: 3px solid white;
+    background: #222;
+}
+</style>
+</head>
+
+<body>
+<canvas id="gameCanvas" width="800" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let gameState = "start";
+
+const keys = {};
+
+const player = {
+    x: 100,
+    y: 375,
+    width: 40,
+    height: 40,
+    speed: 6
+};
+
+document.addEventListener("keydown", function(event) {
+    keys[event.key] = true;
+
+    if (gameState === "start" && event.key === " ") {
+        gameState = "playing";
+    }
+});
+
+document.addEventListener("keyup", function(event) {
+    keys[event.key] = false;
+});
+
+function updatePlayer() {
+    if (keys["ArrowLeft"] || keys["a"]) {
+        player.x -= player.speed;
+    }
+
+    if (keys["ArrowRight"] || keys["d"]) {
+        player.x += player.speed;
+    }
+
+    if (player.x < 0) {
+        player.x = 0;
+    }
+
+    if (player.x + player.width > canvas.width) {
+        player.x = canvas.width - player.width;
+    }
+}
+
+function drawPlayer() {
+    ctx.fillStyle = "#4caf50";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+}
+
+function drawStartScreen() {
+    ctx.fillStyle = "white";
+    ctx.font = "42px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Reverse Runner", canvas.width / 2, 180);
+
+    ctx.font = "22px Arial";
+    ctx.fillText("Press SPACE to Start", canvas.width / 2, 250);
+    ctx.fillText("Move with A/D or Arrow Keys", canvas.width / 2, 290);
+}
+
+function drawGame() {
+    ctx.fillStyle = "#333";
+    ctx.fillRect(0, 415, canvas.width, 85);
+
+    drawPlayer();
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (gameState === "start") {
+        drawStartScreen();
+    }
+
+    if (gameState === "playing") {
+        updatePlayer();
+        drawGame();
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
