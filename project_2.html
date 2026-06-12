@@ -25,6 +25,7 @@ canvas {
 </head>
 
 <body>
+
 <canvas id="gameCanvas" width="800" height="500"></canvas>
 
 <script>
@@ -35,12 +36,18 @@ let gameState = "start";
 
 const keys = {};
 
+const lanes = [200, 300, 400, 500, 600];
+
+let obstacles = [];
+let spawnTimer = 0;
+let gameSpeed = 4;
+
 const player = {
-    x: 100,
-    y: 375,
+    x: lanes[2] - 20,
+    y: 410,
     width: 40,
     height: 40,
-    speed: 6
+    speed: 7
 };
 
 document.addEventListener("keydown", function(event) {
@@ -56,6 +63,7 @@ document.addEventListener("keyup", function(event) {
 });
 
 function updatePlayer() {
+
     if (keys["ArrowLeft"] || keys["a"]) {
         player.x -= player.speed;
     }
@@ -64,47 +72,156 @@ function updatePlayer() {
         player.x += player.speed;
     }
 
-    if (player.x < 0) {
-        player.x = 0;
+    if (player.x < 160) {
+        player.x = 160;
     }
 
-    if (player.x + player.width > canvas.width) {
-        player.x = canvas.width - player.width;
+    if (player.x + player.width > 640) {
+        player.x = 640 - player.width;
+    }
+}
+
+function spawnObstacle() {
+
+    const randomLane = lanes[Math.floor(Math.random() * lanes.length)];
+
+    obstacles.push({
+        x: randomLane - 20,
+        y: -40,
+        width: 40,
+        height: 40
+    });
+}
+
+function updateObstacles() {
+
+    spawnTimer++;
+
+    if (spawnTimer > 45) {
+        spawnObstacle();
+        spawnTimer = 0;
+    }
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+
+        obstacles[i].y += gameSpeed;
+
+        if (obstacles[i].y > canvas.height) {
+            obstacles.splice(i, 1);
+        }
+    }
+}
+
+function drawObstacles() {
+
+    ctx.fillStyle = "#ff4444";
+
+    for (let obstacle of obstacles) {
+        ctx.fillRect(
+            obstacle.x,
+            obstacle.y,
+            obstacle.width,
+            obstacle.height
+        );
+    }
+}
+
+function checkCollisions() {
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+
+        const obstacle = obstacles[i];
+
+        if (
+            player.x < obstacle.x + obstacle.width &&
+            player.x + player.width > obstacle.x &&
+            player.y < obstacle.y + obstacle.height &&
+            player.y + player.height > obstacle.y
+        ) {
+
+            console.log("Obstacle Hit");
+
+            obstacles.splice(i, 1);
+        }
+    }
+}
+
+function drawLanes() {
+
+    ctx.strokeStyle = "#444";
+    ctx.lineWidth = 2;
+
+    for (let lane of lanes) {
+        ctx.beginPath();
+        ctx.moveTo(lane, 0);
+        ctx.lineTo(lane, canvas.height);
+        ctx.stroke();
     }
 }
 
 function drawPlayer() {
     ctx.fillStyle = "#4caf50";
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    ctx.fillRect(
+        player.x,
+        player.y,
+        player.width,
+        player.height
+    );
 }
 
 function drawStartScreen() {
+
     ctx.fillStyle = "white";
     ctx.font = "42px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("Reverse Runner", canvas.width / 2, 180);
+
+    ctx.fillText(
+        "Reverse Runner",
+        canvas.width / 2,
+        180
+    );
 
     ctx.font = "22px Arial";
-    ctx.fillText("Press SPACE to Start", canvas.width / 2, 250);
-    ctx.fillText("Move with A/D or Arrow Keys", canvas.width / 2, 290);
+
+    ctx.fillText(
+        "Press SPACE to Start",
+        canvas.width / 2,
+        250
+    );
+
+    ctx.fillText(
+        "Move with A/D or Arrow Keys",
+        canvas.width / 2,
+        290
+    );
 }
 
 function drawGame() {
-    ctx.fillStyle = "#333";
-    ctx.fillRect(0, 415, canvas.width, 85);
+
+    drawLanes();
+
+    updatePlayer();
+    updateObstacles();
+    checkCollisions();
 
     drawPlayer();
+    drawObstacles();
 }
 
 function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
 
     if (gameState === "start") {
         drawStartScreen();
     }
 
     if (gameState === "playing") {
-        updatePlayer();
         drawGame();
     }
 
@@ -113,5 +230,6 @@ function gameLoop() {
 
 gameLoop();
 </script>
+
 </body>
 </html>
