@@ -42,22 +42,30 @@ let spawnTimer = 0;
 let gameSpeed = 4;
 
 let momentum = 70;
+let displayedMomentum = 70;
+
 const maxMomentum = 100;
-const momentumDrainRate = 0.08;
+const baseMomentumDrainRate = 0.08;
+const movementMomentumDrainRate = 0.16;
 const momentumGain = 20;
+
+let survivalFrames = 0;
+let survivalSeconds = 0;
 
 const player = {
     x: lanes[2] - 20,
     y: 410,
     width: 40,
     height: 40,
-    speed: 7
+    maxSpeed: 7,
+    minSpeed: 2.5,
+    currentSpeed: 7
 };
 
 document.addEventListener("keydown", function(event) {
     keys[event.key] = true;
 
-    if (gameState === "start" && event.key === " ") {
+    if ((gameState === "start" || gameState === "gameOver") && event.key === " ") {
         resetGame();
         gameState = "playing";
     }
@@ -72,26 +80,51 @@ function resetGame() {
     spawnTimer = 0;
     gameSpeed = 4;
     momentum = 70;
+    displayedMomentum = 70;
+    survivalFrames = 0;
+    survivalSeconds = 0;
     player.x = lanes[2] - 20;
+    player.currentSpeed = player.maxSpeed;
+}
+
+function clamp(value, minimum, maximum) {
+
+    if (value < minimum) {
+        return minimum;
+    }
+
+    if (value > maximum) {
+        return maximum;
+    }
+
+    return value;
 }
 
 function updatePlayer() {
 
+    const momentumPercent = momentum / maxMomentum;
+
+    player.currentSpeed =
+        player.minSpeed +
+        (player.maxSpeed - player.minSpeed) * momentumPercent;
+
+    let isMoving = false;
+
     if (keys["ArrowLeft"] || keys["a"]) {
-        player.x -= player.speed;
+        player.x -= player.currentSpeed;
+        isMoving = true;
     }
 
     if (keys["ArrowRight"] || keys["d"]) {
-        player.x += player.speed;
+        player.x += player.currentSpeed;
+        isMoving = true;
     }
 
-    if (player.x < 160) {
-        player.x = 160;
+    if (isMoving) {
+        momentum -= movementMomentumDrainRate;
     }
 
-    if (player.x + player.width > 640) {
-        player.x = 640 - player.width;
-    }
+    player.x = clamp(player.x, 160, 640 - player.width);
 }
 
 function spawnObstacle() {
@@ -127,7 +160,10 @@ function updateObstacles() {
 
 function updateMomentum() {
 
-    momentum -= momentumDrainRate;
+    momentum -= baseMomentumDrainRate;
+    momentum = clamp(momentum, 0, maxMomentum);
+
+    displayedMomentum += (momentum - displayedMomentum) * 0.12;
 
     if (momentum <= 0) {
         momentum = 0;
@@ -135,7 +171,12 @@ function updateMomentum() {
     }
 }
 
-function drawMomentumBar() {
+function updateTimer() {
+    survivalFrames++;
+    survivalSeconds = Math.floor(survivalFrames / 60);
+}
+
+function drawHUD() {
 
     ctx.fillStyle = "white";
     ctx.font = "18px Arial";
@@ -145,11 +186,25 @@ function drawMomentumBar() {
     ctx.fillStyle = "#555";
     ctx.fillRect(25, 45, 200, 20);
 
-    ctx.fillStyle = "#4caf50";
-    ctx.fillRect(25, 45, momentum * 2, 20);
+    if (displayedMomentum > 60) {
+        ctx.fillStyle = "#4caf50";
+    } else if (displayedMomentum > 30) {
+        ctx.fillStyle = "#ffc107";
+    } else {
+        ctx.fillStyle = "#ff4444";
+    }
+
+    ctx.fillRect(25, 45, displayedMomentum * 2, 20);
 
     ctx.strokeStyle = "white";
     ctx.strokeRect(25, 45, 200, 20);
+
+    ctx.fillStyle = "white";
+    ctx.font = "18px Arial";
+    ctx.textAlign = "right";
+
+    ctx.fillText("Time: " + survivalSeconds + "s", canvas.width - 25, 30);
+    ctx.fillText("Move Speed: " + player.currentSpeed.toFixed(1), canvas.width - 25, 60);
 }
 
 function drawObstacles() {
@@ -180,10 +235,7 @@ function checkCollisions() {
         ) {
 
             momentum += momentumGain;
-
-            if (momentum > maxMomentum) {
-                momentum = maxMomentum;
-            }
+            momentum = clamp(momentum, 0, maxMomentum);
 
             obstacles.splice(i, 1);
         }
@@ -191,7 +243,10 @@ function checkCollisions() {
 }
 
 function drawPlayer() {
-    ctx.fillStyle = "#4caf50";
+
+    const momentumPercent = momentum / maxMomentum;
+
+    ctx.fillStyle = "rgba(76, 175, 80, " + (0.4 + momentumPercent * 0.6) + ")";
     ctx.fillRect(
         player.x,
         player.y,
@@ -209,7 +264,7 @@ function drawStartScreen() {
     ctx.fillText(
         "Reverse Runner",
         canvas.width / 2,
-        170
+        150
     );
 
     ctx.font = "22px Arial";
@@ -217,19 +272,25 @@ function drawStartScreen() {
     ctx.fillText(
         "Press SPACE to Start",
         canvas.width / 2,
-        240
+        220
     );
 
     ctx.fillText(
         "Move with A/D or Arrow Keys",
         canvas.width / 2,
-        280
+        260
     );
 
     ctx.fillText(
         "Crash into falling blocks to keep momentum alive",
         canvas.width / 2,
-        325
+        305
+    );
+
+    ctx.fillText(
+        "Low momentum makes movement slower",
+        canvas.width / 2,
+        345
     );
 }
 
@@ -242,7 +303,7 @@ function drawGameOverScreen() {
     ctx.fillText(
         "Game Over",
         canvas.width / 2,
-        200
+        180
     );
 
     ctx.font = "22px Arial";
@@ -250,13 +311,19 @@ function drawGameOverScreen() {
     ctx.fillText(
         "You ran out of momentum",
         canvas.width / 2,
-        250
+        235
+    );
+
+    ctx.fillText(
+        "Survival Time: " + survivalSeconds + " seconds",
+        canvas.width / 2,
+        275
     );
 
     ctx.fillText(
         "Press SPACE to Restart",
         canvas.width / 2,
-        295
+        325
     );
 }
 
@@ -266,8 +333,9 @@ function drawGame() {
     updateObstacles();
     checkCollisions();
     updateMomentum();
+    updateTimer();
 
-    drawMomentumBar();
+    drawHUD();
     drawPlayer();
     drawObstacles();
 }
