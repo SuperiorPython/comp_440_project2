@@ -42,7 +42,7 @@ let spawnTimer = 0;
 
 let gameSpeed = 4;
 const baseGameSpeed = 4;
-const maxGameSpeed = 10;
+const maxGameSpeed = 20;
 const speedIncreaseInterval = 10;
 
 let momentum = 70;
@@ -50,8 +50,13 @@ let displayedMomentum = 70;
 
 const maxMomentum = 100;
 const baseMomentumDrainRate = 0.08;
+const maxMomentumDrainRate = 0.28;
 const movementMomentumDrainRate = 0.16;
+const maxMovementMomentumDrainRate = 0.36;
 const momentumGain = 20;
+
+let currentBaseDrainRate = baseMomentumDrainRate;
+let currentMovementDrainRate = movementMomentumDrainRate;
 
 let survivalFrames = 0;
 let survivalSeconds = 0;
@@ -85,6 +90,8 @@ function resetGame() {
     gameSpeed = baseGameSpeed;
     momentum = 70;
     displayedMomentum = 70;
+    currentBaseDrainRate = baseMomentumDrainRate;
+    currentMovementDrainRate = movementMomentumDrainRate;
     survivalFrames = 0;
     survivalSeconds = 0;
     player.x = lanes[2] - 20;
@@ -125,7 +132,7 @@ function updatePlayer() {
     }
 
     if (isMoving) {
-        momentum -= movementMomentumDrainRate;
+        momentum -= currentMovementDrainRate;
     }
 
     player.x = clamp(player.x, 160, 640 - player.width);
@@ -144,8 +151,25 @@ function spawnObstacle() {
 }
 
 function updateDifficulty() {
-    const speedBoost = Math.floor(survivalSeconds / speedIncreaseInterval);
-    gameSpeed = clamp(baseGameSpeed + speedBoost, baseGameSpeed, maxGameSpeed);
+    const difficultyLevel = Math.floor(survivalSeconds / speedIncreaseInterval);
+
+    gameSpeed = clamp(
+        baseGameSpeed + difficultyLevel,
+        baseGameSpeed,
+        maxGameSpeed
+    );
+
+    currentBaseDrainRate = clamp(
+        baseMomentumDrainRate + difficultyLevel * 0.015,
+        baseMomentumDrainRate,
+        maxMomentumDrainRate
+    );
+
+    currentMovementDrainRate = clamp(
+        movementMomentumDrainRate + difficultyLevel * 0.02,
+        movementMomentumDrainRate,
+        maxMovementMomentumDrainRate
+    );
 }
 
 function updateObstacles() {
@@ -169,7 +193,7 @@ function updateObstacles() {
 
 function updateMomentum() {
 
-    momentum -= baseMomentumDrainRate;
+    momentum -= currentBaseDrainRate;
     momentum = clamp(momentum, 0, maxMomentum);
 
     displayedMomentum += (momentum - displayedMomentum) * 0.12;
