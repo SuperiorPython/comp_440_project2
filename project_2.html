@@ -39,7 +39,11 @@ const lanes = [200, 300, 400, 500, 600];
 
 let obstacles = [];
 let spawnTimer = 0;
+
 let gameSpeed = 4;
+const baseGameSpeed = 4;
+const maxGameSpeed = 10;
+const speedIncreaseInterval = 10;
 
 let momentum = 70;
 let displayedMomentum = 70;
@@ -78,7 +82,7 @@ document.addEventListener("keyup", function(event) {
 function resetGame() {
     obstacles = [];
     spawnTimer = 0;
-    gameSpeed = 4;
+    gameSpeed = baseGameSpeed;
     momentum = 70;
     displayedMomentum = 70;
     survivalFrames = 0;
@@ -137,6 +141,11 @@ function spawnObstacle() {
         width: 40,
         height: 40
     });
+}
+
+function updateDifficulty() {
+    const speedBoost = Math.floor(survivalSeconds / speedIncreaseInterval);
+    gameSpeed = clamp(baseGameSpeed + speedBoost, baseGameSpeed, maxGameSpeed);
 }
 
 function updateObstacles() {
@@ -204,7 +213,7 @@ function drawHUD() {
     ctx.textAlign = "right";
 
     ctx.fillText("Time: " + survivalSeconds + "s", canvas.width - 25, 30);
-    ctx.fillText("Move Speed: " + player.currentSpeed.toFixed(1), canvas.width - 25, 60);
+    ctx.fillText("Fall Speed: " + gameSpeed.toFixed(1), canvas.width - 25, 60);
 }
 
 function drawObstacles() {
@@ -330,10 +339,11 @@ function drawGameOverScreen() {
 function drawGame() {
 
     updatePlayer();
+    updateTimer();
+    updateDifficulty();
     updateObstacles();
     checkCollisions();
     updateMomentum();
-    updateTimer();
 
     drawHUD();
     drawPlayer();
